@@ -1,0 +1,74 @@
+{
+  "weekly_focuses": {
+    "focus_1": "",
+    "focus_2": "",
+    "focus_3": "",
+    "week_start": ""
+  },
+  "exercise": {
+    "workout_plans": [],
+    "logs": [],
+    "custom_exercises": []
+  },
+  "projects": {
+    "items": [],
+    "goals": []
+  },
+  "reading": {
+    "books": []
+  },
+  "work": {
+    "tasks": [],
+    "learning_log": [],
+    "chartership": {
+      "competencies": [
+        {
+          "id": "comp_a",
+          "name": "Knowledge and understanding",
+          "progress_pct": 0,
+          "evidence": [],
+          "notes": ""
+        },
+        {
+          "id": "comp_b",
+          "name": "Design, development and solving engineering problems",
+          "progress_pct": 0,
+          "evidence": [],
+          "notes": ""
+        },
+        {
+          "id": "comp_c",
+          "name": "Responsibility, management and leadership",
+          "progress_pct": 0,
+          "evidence": [],
+          "notes": ""
+        },
+        {
+          "id": "comp_d",
+          "name": "Communication and interpersonal skills",
+          "progress_pct": 0,
+          "evidence": [],
+          "notes": ""
+        },
+        {
+          "id": "comp_e",
+          "name": "Professional commitment",
+          "progress_pct": 0,
+          "evidence": [],
+          "notes": ""
+        }
+      ]
+    }
+  },
+  "custom_tiles": [],
+  "tile_settings": {
+    "order": ["exercise", "projects", "reading", "work"],
+    "colours": {
+      "exercise": "#00B4D8",
+      "projects": "#FF6B35",
+      "reading": "#7B2D8E",
+      "work": "#00A86B"
+    },
+    "custom": []
+  }
+}
