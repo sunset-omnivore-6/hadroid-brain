@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|mcp__github__create_or_update_file|mcp__github__push_files|mcp__github__create_pull_request|mcp__github__merge_pull_request",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 check_tasks.py --hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

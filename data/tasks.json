@@ -1,0 +1,60 @@
+{
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Test task with no due date",
+      "status": "open",
+      "progress": null,
+      "due": null,
+      "summary": "A test task added while the app was being built. It will be cleared before the real list goes in.",
+      "created": "2026-09-22T08:45:00Z",
+      "closed": null,
+      "notes": [
+        {
+          "at": "2026-09-22T08:45:00Z",
+          "note": "Added as a test task while the app was being built."
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Test task with a due date and a percentage",
+      "status": "open",
+      "progress": 40,
+      "due": "2026-09-25",
+      "summary": "About 40 percent done. A test task to show how a due date and a percentage look.",
+      "created": "2026-09-22T08:46:00Z",
+      "closed": null,
+      "notes": [
+        {
+          "at": "2026-09-22T08:46:00Z",
+          "note": "Added as a test task with a due date of Friday 25 September."
+        },
+        {
+          "at": "2026-09-22T08:47:00Z",
+          "note": "About 40 percent done, to show how a percentage is displayed."
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Test task that is already finished",
+      "status": "done",
+      "progress": null,
+      "due": null,
+      "summary": "Finished. A test task to show how a done task looks.",
+      "created": "2026-09-22T08:48:00Z",
+      "closed": "2026-09-22T08:49:00Z",
+      "notes": [
+        {
+          "at": "2026-09-22T08:48:00Z",
+          "note": "Added as a test task that will be marked done straight away."
+        },
+        {
+          "at": "2026-09-22T08:49:00Z",
+          "note": "Done. Marked finished to show how the Done tab looks."
+        }
+      ]
+    }
+  ]
+}

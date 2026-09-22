@@ -1,10 +1,20 @@
 [theme]
-base = "dark"
-primaryColor = "#00B4D8"
-backgroundColor = "#1A1A2E"
-secondaryBackgroundColor = "#16213E"
-textColor = "#EAEAEA"
-font = "sans serif"
+base = "light"
+primaryColor = "#0077A8"
+backgroundColor = "#FAF7F0"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1F2430"
+font = "Lexend, sans-serif"
+headingFont = "Lexend, sans-serif"
+
+[[theme.fontFaces]]
+family = "Lexend"
+url = "app/static/fonts/Lexend.woff2"
+weight = "100 900"
 
 [server]
 headless = true
+enableStaticServing = true
+
+[client]
+toolbarMode = "minimal"
