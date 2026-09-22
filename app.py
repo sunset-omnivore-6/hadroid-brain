@@ -9,6 +9,7 @@ background rather than black on white, left-aligned text, bold for emphasis and 
 short lines, and a Reading settings panel so the reader can change font, size, spacing and
 background. Those choices are kept in the page address so a home-screen shortcut remembers them.
 """
+import calendar as cal
 import hmac
 import json
 import os
@@ -136,6 +137,7 @@ em, i {{ font-style: normal; font-weight: 700; }}   /* never italics */
 [data-testid="stCheckbox"] p {{ font-size: {px}px; font-weight: 700; }}
 [data-testid="stButton"] button {{ min-height: 52px; font-size: {max(px - 2, 16)}px; font-weight: 700; border-radius: 10px; }}
 [data-testid="stExpander"] summary {{ min-height: 48px; font-size: {max(px - 2, 16)}px; }}
+[data-testid="stPills"] button {{ min-height: 44px; font-size: {max(px - 2, 16)}px; }}
 button[data-baseweb="tab"] {{ min-height: 52px; font-size: {max(px - 2, 16)}px; font-weight: 700; }}
 *:focus-visible {{ outline: 3px solid {ACCENT} !important; outline-offset: 2px; }}
 [data-testid="stVerticalBlockBorderWrapper"] {{ background-color: {card}; border-radius: 12px; margin-bottom: 0.6em; }}
@@ -329,15 +331,16 @@ def history(task):
                         unsafe_allow_html=True)
 
 
-def task_card(task, version, ticked):
+def task_card(task, version, ticked, where="list"):
     """One task in a bordered box: tick box and title, then the date and summary on one line."""
     with st.container(border=True):
-        st.checkbox(f"{task['id']} {task['title']}", value=ticked, key=f"tick_{task['id']}_{version}",
+        st.checkbox(f"{task['id']} {task['title']}", value=ticked, key=f"tick_{where}_{task['id']}_{version}",
                     on_change=on_tick, args=(task["id"], not ticked))
         when = closed_words(task) if ticked else due_words(task)
         extra = f" · {task['progress']}% done" if (not ticked and task["progress"] is not None) else ""
         lead = f"**{when}{extra}** · " if when else ""
-        st.markdown(f"{lead}{task['summary']}")
+        tags = "".join(f" <span style='color:{MUTED}; font-size:0.85em'>#{x}</span>" for x in task["tags"])
+        st.markdown(f"{lead}{task['summary']}{tags}", unsafe_allow_html=True)
         history(task)
 
 
@@ -346,6 +349,77 @@ def aside_card(task):
         st.markdown(f"**{task['id']} {task['title']}**")
         st.markdown(f"**{closed_words(task)}** · {task['summary']}")
         history(task)
+
+
+def month_grid(open_tasks, year, month):
+    """A hall-calendar month: seven columns, one row per week, tasks written in the day boxes."""
+    today = datetime.now(TIMEZONE).date()
+    by_day = {}
+    for t in open_tasks:
+        if t["due"]:
+            by_day.setdefault(date.fromisoformat(t["due"]), []).append(t)
+    weeks = cal.Calendar(firstweekday=0).monthdatescalendar(year, month)
+    head = "".join(f"<th>{d}</th>" for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
+    rows = []
+    for week in weeks:
+        cells = []
+        for d in week:
+            classes = []
+            if d.month != month:
+                classes.append("other")
+            if d == today:
+                classes.append("today")
+            items = "".join(
+                f"<div class='item{' late' if d < today else ''}'><span class='num'>{t['id']}</span>"
+                f"<span class='ttl'> {t['title']}</span></div>" for t in by_day.get(d, []))
+            cells.append(f"<td class='{' '.join(classes)}'><div class='day'>{d.day}</div>{items}</td>")
+        rows.append("<tr>" + "".join(cells) + "</tr>")
+    return f"""
+<style>
+.hall {{ width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }}
+.hall th {{ text-align: left; font-weight: 700; padding: 4px 6px; color: {MUTED}; }}
+.hall td {{ vertical-align: top; background: {BACKGROUNDS[SETTINGS['bg']][2]}; border: 1px solid #D8D4CA; border-radius: 8px; padding: 6px; min-height: 84px; height: 84px; }}
+.hall td.other {{ opacity: 0.45; }}
+.hall td.today {{ border: 3px solid {ACCENT}; }}
+.hall .day {{ font-weight: 700; margin-bottom: 4px; }}
+.hall .item {{ font-size: 0.8em; line-height: 1.35; margin-bottom: 4px; word-break: break-word; }}
+.hall .item.late {{ color: #B45309; }}
+.hall .num {{ font-weight: 700; }}
+@media (max-width: 640px) {{ .hall .ttl {{ display: none; }} .hall td {{ padding: 4px; height: 64px; }} .hall th {{ padding: 2px; font-size: 0.8em; }} }}
+</style>
+<table class="hall"><thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table>
+"""
+
+
+def month_view(open_tasks):
+    today = datetime.now(TIMEZONE).date()
+    if "month" not in st.session_state:
+        st.session_state["month"] = (today.year, today.month)
+    y, m = st.session_state["month"]
+    left, mid, right = st.columns([1, 2, 1], vertical_alignment="center")
+    with left:
+        if st.button("Previous", width="stretch"):
+            st.session_state["month"] = (y - 1, 12) if m == 1 else (y, m - 1)
+            st.rerun()
+    with mid:
+        st.markdown(f"<h3 style='text-align:center; margin: 0'>{cal.month_name[m]} {y}</h3>", unsafe_allow_html=True)
+    with right:
+        if st.button("Next", width="stretch"):
+            st.session_state["month"] = (y + 1, 1) if m == 12 else (y, m + 1)
+            st.rerun()
+    st.markdown(month_grid(open_tasks, y, m), unsafe_allow_html=True)
+    st.caption("Today has a blue border. Overdue tasks are shown in orange. On a phone the boxes show task numbers only; the list below has the names.")
+
+
+def tag_filter(tasks, key):
+    """A row of subject buttons. Returns the tasks that match the chosen subject."""
+    tags = sorted({tag for t in tasks for tag in t["tags"]})
+    if not tags:
+        return tasks
+    choice = st.pills("Subject", ["All"] + tags, default="All", key=key)
+    if not choice or choice == "All":
+        return tasks
+    return [t for t in tasks if choice in t["tags"]]
 
 
 def grouped(open_tasks):
@@ -481,22 +555,41 @@ def main():
     done_tasks = sorted([t for t in tasks if t["status"] == "done"], key=lambda t: t["closed"], reverse=True)
     aside_tasks = sorted([t for t in tasks if t["status"] == "set aside"], key=lambda t: t["closed"], reverse=True)
 
-    tab_open, tab_cal, tab_done = st.tabs([f"To do · {len(open_tasks)}", "Calendar",
-                                           f"Done · {len(done_tasks) + len(aside_tasks)}"])
+    groups = grouped(open_tasks)
+    soon = groups["Overdue"] + groups["Today"] + groups["Tomorrow"]
+    tab_today, tab_all, tab_cal, tab_done = st.tabs([f"Today · {len(soon)}", f"All · {len(open_tasks)}", "Calendar",
+                                                     f"Done · {len(done_tasks) + len(aside_tasks)}"])
 
-    with tab_open:
-        read_aloud(spoken(open_tasks, ticked=False), key="say_open")
+    with tab_today:
+        read_aloud(spoken(soon, ticked=False), key="say_today")
+        if not soon:
+            st.info("Nothing due today or tomorrow, and nothing overdue.")
+        for name in ("Overdue", "Today", "Tomorrow"):
+            if groups[name]:
+                st.subheader(f"{name} · {len(groups[name])}")
+                for task in groups[name]:
+                    task_card(task, version, ticked=False, where="today")
+        rest = len(open_tasks) - len(soon)
+        if rest:
+            st.caption(f"{rest} more on the All tab: {len(groups['This week'])} this week, "
+                       f"{len(groups['Later'])} later, {len(groups['No date'])} with no date.")
+
+    with tab_all:
+        shown = tag_filter(open_tasks, key="filter_all")
+        read_aloud(spoken(shown, ticked=False), key="say_all")
         if not open_tasks:
             st.info("Nothing to do. Tell Claude when something comes up.")
-        for name, tasks_in_group in grouped(open_tasks).items():
+        for name, tasks_in_group in grouped(shown).items():
             if not tasks_in_group:
                 continue
             st.subheader(f"{name} · {len(tasks_in_group)}")
             for task in tasks_in_group:
-                task_card(task, version, ticked=False)
+                task_card(task, version, ticked=False, where="all")
 
     with tab_cal:
-        calendar_view(open_tasks)
+        month_view(open_tasks)
+        st.divider()
+        calendar_view(open_tasks, weeks_ahead=2)
 
     with tab_done:
         st.subheader("Done")
@@ -504,7 +597,7 @@ def main():
         if not done_tasks:
             st.info("Nothing finished yet.")
         for task in done_tasks:
-            task_card(task, version, ticked=True)
+            task_card(task, version, ticked=True, where="done")
         st.subheader("Set aside")
         st.caption("Only Claude can set a task aside or bring it back.")
         if not aside_tasks:

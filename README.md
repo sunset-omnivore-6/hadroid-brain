@@ -29,7 +29,11 @@ a one-line summary of where it stands, a percentage only if you gave one, and a 
 **History** of dated notes. Tasks with a due date come first, soonest first. Overdue tasks
 stay on the list; a task with no date has unlimited time.
 
-The second tab shows finished tasks, newest first, and tasks you asked Claude to set aside.
+The tabs: **Today** shows only what is overdue, due today or due tomorrow. **All** shows
+everything, grouped by when it is due, with a row of subject buttons to show one subject at a
+time (tell Claude the subject when you add a task, for example "tag it research"). **Calendar**
+is a month view like a hall calendar, with the coming two weeks listed underneath. **Done**
+shows finished tasks, newest first, and tasks you asked Claude to set aside.
 
 ## Reading settings
 

@@ -18,7 +18,7 @@ import sys
 from datetime import date, datetime, timedelta, timezone
 
 TASKS_PATH = "data/tasks.json"
-FIELDS = ["id", "title", "status", "progress", "due", "summary", "created", "closed", "notes"]
+FIELDS = ["id", "title", "status", "progress", "due", "tags", "summary", "created", "closed", "notes"]
 STATUSES = ["open", "done", "set aside"]
 ID_RE = re.compile(r"^T[1-9][0-9]*$")
 TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -57,6 +57,7 @@ def dump(data):
     tasks = []
     for task in data["tasks"]:
         tidy_task = {field: task.get(field) for field in FIELDS}
+        tidy_task["tags"] = tidy_task["tags"] or []
         tidy_task["notes"] = [{"at": n.get("at"), "note": n.get("note")} for n in (task.get("notes") or [])]
         tasks.append(tidy_task)
     tasks.sort(key=lambda t: id_number(t["id"]) if isinstance(t["id"], str) and ID_RE.match(t["id"]) else 10**9)
@@ -97,7 +98,7 @@ def check_text(text, now=None):
             where = f"Task number {position} in the list"
 
         if not isinstance(task, dict):
-            errors.append(f"{where}: must be an object with the nine fields {', '.join(FIELDS)}.")
+            errors.append(f"{where}: must be an object with the ten fields {', '.join(FIELDS)}.")
             continue
 
         keys = list(task.keys())
@@ -106,7 +107,7 @@ def check_text(text, now=None):
         if missing:
             errors.append(f"{where}: missing field(s): {', '.join(missing)}.")
         if extra:
-            errors.append(f"{where}: unexpected field(s): {', '.join(extra)}. Only the nine fields are allowed.")
+            errors.append(f"{where}: unexpected field(s): {', '.join(extra)}. Only the ten fields are allowed.")
         if not missing and not extra and keys != FIELDS:
             errors.append(f"{where}: the fields are in the wrong order. The order is {', '.join(FIELDS)}.")
         if missing or extra:
@@ -141,6 +142,16 @@ def check_text(text, now=None):
         # due
         if task["due"] is not None and parse_date(task["due"]) is None:
             errors.append(f'{where}: due must be blank (null) or a date written like "2026-09-25".')
+
+        # tags
+        tags = task["tags"]
+        if not isinstance(tags, list) or any(not isinstance(x, str) or not x.strip() for x in tags):
+            errors.append(f"{where}: tags must be a list of short words, like [\"research\", \"admin\"]. It may be empty.")
+        else:
+            if any(x != x.strip().lower() for x in tags):
+                errors.append(f"{where}: tags are written in lower case with no spaces around them.")
+            if len(set(tags)) != len(tags):
+                errors.append(f"{where}: the same tag appears twice.")
 
         # summary
         if not isinstance(task["summary"], str) or not task["summary"].strip():
