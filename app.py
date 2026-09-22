@@ -2,43 +2,28 @@
 
 Everything about a task is changed by telling Claude (see AGENTS.md). The only thing this page
 can change is a tick: mark a task done, or put a done task back on the list.
+
+The layout follows the British Dyslexia Association style guide: a sans-serif font at 18px or
+larger, line spacing of at least 1.5, extra letter and word spacing, dark grey text on a cream
+background rather than black on white, left-aligned text, bold for emphasis and never italics,
+short lines, and a Reading settings panel so the reader can change font, size, spacing and
+background. Those choices are kept in the page address so a home-screen shortcut remembers them.
 """
 import hmac
+import json
 import os
 import time
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 import check_tasks
 import tasks_store
 
 st.set_page_config(page_title="Work tasks", page_icon=":white_check_mark:", layout="centered",
                    initial_sidebar_state="collapsed")
-
-STYLE = """
-<style>
-html, body, p, li, label, button, input, textarea, h1, h2, h3,
-[data-testid="stMarkdownContainer"], [data-testid="stCaptionContainer"] {
-    font-family: 'Lexend', sans-serif;
-}
-html, body { font-size: 18px; line-height: 1.5; }
-[data-testid="stAppViewContainer"] p, [data-testid="stAppViewContainer"] li,
-[data-testid="stAppViewContainer"] label { font-size: 18px; line-height: 1.5; text-align: left; }
-[data-testid="stCaptionContainer"] p { font-size: 16px; }
-.block-container { padding-top: 1.5rem; }
-[data-testid="stCheckbox"] { min-height: 48px; display: flex; align-items: center; }
-[data-testid="stCheckbox"] label { min-height: 48px; align-items: center; gap: 10px; }
-[data-testid="stCheckbox"] label > span:first-of-type { width: 26px; height: 26px; }
-[data-testid="stCheckbox"] p { font-size: 18px; font-weight: 500; }
-[data-testid="stButton"] button { min-height: 48px; font-size: 16px; font-weight: 600; border-radius: 10px; }
-[data-testid="stExpander"] summary { min-height: 44px; font-size: 16px; }
-button[data-baseweb="tab"] { min-height: 48px; font-size: 16px; font-weight: 600; }
-#MainMenu, footer { visibility: hidden; }
-</style>
-"""
-st.html(STYLE)
 
 
 # ---------- settings ----------
@@ -69,6 +54,146 @@ def get_store():
     return tasks_store.GitHubStore(token, repo, branch=setting("GITHUB_BRANCH", "main"))
 
 
+# ---------- reading settings (font, size, spacing, background) ----------
+
+FONTS = {
+    "lexend": ("Lexend", "'Lexend', Verdana, sans-serif"),
+    "atkinson": ("Atkinson Hyperlegible", "'Atkinson Hyperlegible', Verdana, sans-serif"),
+    "verdana": ("Verdana", "Verdana, Geneva, Tahoma, sans-serif"),
+    "opendyslexic": ("OpenDyslexic", "'OpenDyslexic', Verdana, sans-serif"),
+}
+SIZES = {"normal": ("Normal", 18), "large": ("Large", 21), "xlarge": ("Extra large", 24)}
+SPACINGS = {
+    "normal": ("Normal", {"letter": "0.05em", "word": "0.12em", "line": "1.6"}),
+    "wide": ("Wide", {"letter": "0.12em", "word": "0.3em", "line": "1.9"}),
+}
+BACKGROUNDS = {
+    "cream": ("Cream", "#FAF7F0", "#FFFFFF"),
+    "yellow": ("Pale yellow", "#FBF3D0", "#FFFBE8"),
+    "blue": ("Pale blue", "#E6F0F8", "#F6FAFD"),
+    "grey": ("Pale grey", "#ECECEA", "#F8F8F7"),
+    "white": ("White", "#FFFFFF", "#F4F4F2"),
+}
+TEXT = "#1F2430"      # dark grey-navy, softer than pure black
+MUTED = "#4F5866"     # for captions and dates; still passes contrast on every background
+ACCENT = "#0077A8"
+
+
+def reading_settings():
+    """The reader's choices, read from the page address, with sensible defaults."""
+    q = st.query_params
+    return {
+        "font": q.get("font") if q.get("font") in FONTS else "lexend",
+        "size": q.get("size") if q.get("size") in SIZES else "normal",
+        "space": q.get("space") if q.get("space") in SPACINGS else "normal",
+        "bg": q.get("bg") if q.get("bg") in BACKGROUNDS else "cream",
+    }
+
+
+def build_style(s):
+    family = FONTS[s["font"]][1]
+    px = SIZES[s["size"]][1]
+    sp = SPACINGS[s["space"]][1]
+    bg, card = BACKGROUNDS[s["bg"]][1], BACKGROUNDS[s["bg"]][2]
+    return f"""
+<style>
+@font-face {{ font-family: 'Atkinson Hyperlegible'; font-weight: 400; src: url('app/static/fonts/AtkinsonHyperlegible-400.woff2') format('woff2'); }}
+@font-face {{ font-family: 'Atkinson Hyperlegible'; font-weight: 700; src: url('app/static/fonts/AtkinsonHyperlegible-700.woff2') format('woff2'); }}
+@font-face {{ font-family: 'OpenDyslexic'; font-weight: 400; src: url('app/static/fonts/OpenDyslexic-Regular.woff') format('woff'); }}
+@font-face {{ font-family: 'OpenDyslexic'; font-weight: 700; src: url('app/static/fonts/OpenDyslexic-Bold.woff') format('woff'); }}
+
+/* no banner at the top; the page starts with the title */
+header[data-testid="stHeader"] {{ display: none; }}
+.block-container {{ padding-top: 1.25rem; padding-bottom: 4rem; max-width: 46rem; }}
+
+/* colours: dark grey text on a soft background, never black on white unless chosen */
+.stApp, [data-testid="stAppViewContainer"] {{ background-color: {bg} !important; color: {TEXT}; }}
+[data-testid="stExpander"] details {{ background-color: {card}; border-radius: 10px; }}
+[data-testid="stForm"] {{ background-color: {card}; border-radius: 10px; }}
+
+/* type: sans serif, {px}px, line spacing {sp['line']}, extra letter and word spacing, left aligned */
+html, body, p, li, label, button, input, textarea, h1, h2, h3, summary,
+[data-testid="stMarkdownContainer"], [data-testid="stCaptionContainer"] {{
+    font-family: {family} !important;
+    letter-spacing: {sp['letter']};
+    word-spacing: {sp['word']};
+}}
+html, body {{ font-size: {px}px; line-height: {sp['line']}; }}
+[data-testid="stAppViewContainer"] p, [data-testid="stAppViewContainer"] li,
+[data-testid="stAppViewContainer"] label, [data-testid="stAppViewContainer"] summary {{
+    font-size: {px}px; line-height: {sp['line']}; text-align: left; color: {TEXT};
+}}
+[data-testid="stAppViewContainer"] p {{ margin-bottom: 0.6em; }}
+h1 {{ font-size: {round(px * 1.7)}px !important; font-weight: 700 !important; line-height: 1.3 !important; }}
+h2, h3 {{ font-size: {round(px * 1.25)}px !important; font-weight: 700 !important; line-height: 1.3 !important; }}
+em, i {{ font-style: normal; font-weight: 700; }}   /* never italics */
+[data-testid="stCaptionContainer"] p {{ font-size: {max(px - 2, 15)}px; color: {MUTED}; }}
+
+/* controls: big targets, clear focus */
+[data-testid="stCheckbox"] {{ min-height: 52px; display: flex; align-items: center; margin-top: 0.4em; }}
+[data-testid="stCheckbox"] label {{ min-height: 52px; align-items: center; gap: 12px; }}
+[data-testid="stCheckbox"] label > span:first-of-type {{ width: 28px; height: 28px; }}
+[data-testid="stCheckbox"] p {{ font-size: {px}px; font-weight: 700; }}
+[data-testid="stButton"] button {{ min-height: 52px; font-size: {max(px - 2, 16)}px; font-weight: 700; border-radius: 10px; }}
+[data-testid="stExpander"] summary {{ min-height: 48px; font-size: {max(px - 2, 16)}px; }}
+button[data-baseweb="tab"] {{ min-height: 52px; font-size: {max(px - 2, 16)}px; font-weight: 700; }}
+*:focus-visible {{ outline: 3px solid {ACCENT} !important; outline-offset: 2px; }}
+hr {{ margin: 1.2em 0; }}
+#MainMenu, footer {{ visibility: hidden; }}
+</style>
+"""
+
+
+SETTINGS = reading_settings()
+st.html(build_style(SETTINGS))
+
+
+def remember(param, options, key):
+    """Writes a changed reading setting into the page address."""
+    label = st.session_state[key]
+    for code, spec in options.items():
+        if spec[0] == label:
+            st.query_params[param] = code
+            return
+
+
+def reading_settings_panel(s):
+    with st.expander("Reading settings"):
+        st.caption("Pick what is easiest for you to read. The choices are kept in the page address, "
+                   "so add the app to your home screen after choosing.")
+        st.selectbox("Font", [v[0] for v in FONTS.values()], index=list(FONTS).index(s["font"]),
+                     key="set_font", on_change=remember, args=("font", FONTS, "set_font"))
+        st.selectbox("Text size", [v[0] for v in SIZES.values()], index=list(SIZES).index(s["size"]),
+                     key="set_size", on_change=remember, args=("size", SIZES, "set_size"))
+        st.selectbox("Spacing between letters and lines", [v[0] for v in SPACINGS.values()],
+                     index=list(SPACINGS).index(s["space"]),
+                     key="set_space", on_change=remember, args=("space", SPACINGS, "set_space"))
+        st.selectbox("Background", [v[0] for v in BACKGROUNDS.values()], index=list(BACKGROUNDS).index(s["bg"]),
+                     key="set_bg", on_change=remember, args=("bg", BACKGROUNDS, "set_bg"))
+
+
+def read_aloud(text, key):
+    """A Read aloud button that uses the phone's or computer's own voice."""
+    safe = json.dumps(text)
+    components.html(f"""
+<div style="font-family: Verdana, sans-serif; display: flex; gap: 10px;">
+  <button id="go" style="min-height: 48px; padding: 0 18px; border: 2px solid {ACCENT}; border-radius: 10px; background: {ACCENT}; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;">Read aloud</button>
+  <button id="stop" style="min-height: 48px; padding: 0 18px; border: 2px solid {ACCENT}; border-radius: 10px; background: #fff; color: {ACCENT}; font-size: 16px; font-weight: 700; cursor: pointer;">Stop</button>
+</div>
+<script>
+  const text = {safe};
+  document.getElementById("go").onclick = function () {{
+    if (!window.speechSynthesis) {{ alert("This browser cannot read aloud."); return; }}
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-GB"; u.rate = 0.95;
+    window.speechSynthesis.speak(u);
+  }};
+  document.getElementById("stop").onclick = function () {{ if (window.speechSynthesis) window.speechSynthesis.cancel(); }};
+</script>
+""", height=60)
+
+
 # ---------- words for dates and times ----------
 
 def day_words(d):
@@ -90,7 +215,13 @@ def due_words(task):
         return None
     d = date.fromisoformat(task["due"])
     today = datetime.now(TIMEZONE).date()
-    return f"{'Was due' if d < today else 'Due'} {day_words(d)}"
+    if d == today:
+        return "Due today"
+    if d == today + timedelta(days=1):
+        return "Due tomorrow"
+    if d < today:
+        return f"Was due {day_words(d)}"
+    return f"Due {day_words(d)}"
 
 
 def closed_words(task):
@@ -192,7 +323,7 @@ def unlocked():
 def history(task):
     with st.expander("History"):
         for note in reversed(task["notes"]):
-            st.markdown(f"<span style='font-size:15px;opacity:0.75'>{when_words(note['at'])}</span><br>{note['note']}",
+            st.markdown(f"<span style='color:{MUTED}; font-size: 0.9em'>{when_words(note['at'])}</span><br>{note['note']}",
                         unsafe_allow_html=True)
 
 
@@ -218,6 +349,16 @@ def aside_card(task):
     st.write(task["summary"])
     history(task)
     st.divider()
+
+
+def spoken(tasks, ticked):
+    """The list as sentences for the Read aloud button."""
+    lines = []
+    for t in tasks:
+        number = t["id"][1:]
+        extra = closed_words(t) if ticked else (due_words(t) or "no due date")
+        lines.append(f"Task {number}. {t['title']}. {extra}. {t['summary']}")
+    return " ".join(lines) if lines else "Nothing to do."
 
 
 def notice(text, details=None):
@@ -266,6 +407,7 @@ def main():
     read_at = datetime.now(TIMEZONE).strftime("%H:%M")
     st.caption(f"Read from GitHub at {read_at}, {TZ_LABEL}")
     st.caption("To add or change a task, tell Claude.")
+    reading_settings_panel(SETTINGS)
 
     data, errors, _ = check_tasks.check_text(text)
     if errors:
@@ -277,9 +419,10 @@ def main():
     done_tasks = sorted([t for t in tasks if t["status"] == "done"], key=lambda t: t["closed"], reverse=True)
     aside_tasks = sorted([t for t in tasks if t["status"] == "set aside"], key=lambda t: t["closed"], reverse=True)
 
-    tab_open, tab_done = st.tabs([f"To do · {len(open_tasks)}", f"Done and set aside · {len(done_tasks) + len(aside_tasks)}"])
+    tab_open, tab_done = st.tabs([f"To do · {len(open_tasks)}", f"Done · {len(done_tasks) + len(aside_tasks)}"])
 
     with tab_open:
+        read_aloud(spoken(open_tasks, ticked=False), key="say_open")
         if not open_tasks:
             st.info("Nothing to do. Tell Claude when something comes up.")
         for task in open_tasks:
@@ -287,6 +430,7 @@ def main():
 
     with tab_done:
         st.subheader("Done")
+        read_aloud(spoken(done_tasks, ticked=True), key="say_done")
         if not done_tasks:
             st.info("Nothing finished yet.")
         for task in done_tasks:

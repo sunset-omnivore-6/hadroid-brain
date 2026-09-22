@@ -30,6 +30,25 @@ stay on the list; a task with no date has unlimited time.
 
 The second tab shows finished tasks, newest first, and tasks you asked Claude to set aside.
 
+## Reading settings
+
+The layout follows the British Dyslexia Association style guide: a clear sans-serif font at
+18px or larger, line spacing of 1.6, extra space between letters and words, dark grey text on
+a cream background rather than black on white, everything left-aligned, bold for emphasis and
+never italics, short lines, and big buttons.
+
+Open **Reading settings** under the title to change:
+
+- **Font:** Lexend, Atkinson Hyperlegible, Verdana or OpenDyslexic. Research finds no single
+  "dyslexia font" that helps everyone, so pick the one you read most easily.
+- **Text size:** Normal, Large or Extra large.
+- **Spacing:** Normal or Wide (wider letter, word and line spacing).
+- **Background:** Cream, Pale yellow, Pale blue, Pale grey or White.
+
+The choices are kept in the page address, so add the app to your home screen after choosing
+and it opens that way every time. Each tab also has a **Read aloud** button that uses your
+phone's or computer's own voice.
+
 ## Setting it up (once)
 
 You need: this repository (private), a free Streamlit Community Cloud account, and the

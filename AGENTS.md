@@ -93,9 +93,12 @@ One task, as an example:
     the way your tool's section below says. Never force-push and never rewrite history.
 12. **One session at a time.** Do not start a second task session while one is still
     running; wait for the reply first.
-13. **If the file will not open**, do not guess a repair. Restore the last good version from
+13. **Repeating tasks.** The file has no repeat setting. A task that repeats (for example a
+    weekly meeting) says so in its summary. When the user marks it done, add a new task for
+    the next time with the same title and the next date, and say so in the reply.
+14. **If the file will not open**, do not guess a repair. Restore the last good version from
     the git history, tell the user, then apply their change on top of it.
-14. **Reply in plain English** with exactly what changed: ids, titles, new statuses, due
+15. **Reply in plain English** with exactly what changed: ids, titles, new statuses, due
     dates as full dates, and anything you were unsure about. No jargon.
 
 ## Landing a change on main
