@@ -59,16 +59,20 @@
     {
       "id": "T4",
       "title": "Make the app",
-      "status": "open",
+      "status": "done",
       "progress": null,
       "due": "2026-09-22",
       "summary": "Due today. Build the tick-list app and get it running on the phone.",
       "created": "2026-09-22T09:27:16Z",
-      "closed": null,
+      "closed": "2026-09-22T09:48:04Z",
       "notes": [
         {
           "at": "2026-09-22T09:27:16Z",
           "note": "Added. To do today: make the app."
+        },
+        {
+          "at": "2026-09-22T09:48:04Z",
+          "note": "Ticked done in the app."
         }
       ]
     },
