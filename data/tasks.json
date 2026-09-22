@@ -79,16 +79,20 @@
     {
       "id": "T5",
       "title": "Set up a meeting with the person",
-      "status": "open",
+      "status": "done",
       "progress": null,
       "due": "2026-09-22",
       "summary": "Due today. Pick a time and send the invite.",
       "created": "2026-09-22T09:27:16Z",
-      "closed": null,
+      "closed": "2026-09-22T09:48:05Z",
       "notes": [
         {
           "at": "2026-09-22T09:27:16Z",
           "note": "Added. To do today: set up a meeting with the person."
+        },
+        {
+          "at": "2026-09-22T09:48:05Z",
+          "note": "Ticked done in the app."
         }
       ]
     },
