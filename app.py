@@ -3,7 +3,9 @@
 Everything about a task is changed by telling Claude (see AGENTS.md). The only thing this page
 can change is a tick: mark a task done, or put a done task back on the list.
 """
+import hmac
 import os
+import time
 from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -155,6 +157,36 @@ def on_tick(task_id, make_done):
     flash("GitHub was busy, so nothing was changed. Tap Refresh and tick again.")
 
 
+# ---------- the password screen ----------
+
+def unlocked():
+    """True once the right password has been typed in this browser tab.
+
+    Nothing is read from GitHub until then. A new tab or page load asks again.
+    """
+    if st.session_state.get("unlocked"):
+        return True
+    st.title("Work tasks")
+    password = setting("APP_PASSWORD")
+    if not password:
+        st.warning("No password has been set for the app yet, so nothing is shown. "
+                   "Add APP_PASSWORD under Manage app, Settings, Secrets on Streamlit, then Reboot app.")
+        return False
+    with st.form("unlock"):
+        typed = st.text_input("Password", type="password")
+        opened = st.form_submit_button("Open", width="stretch")
+    if opened:
+        tries = st.session_state.get("tries", 0)
+        if tries >= 5:
+            time.sleep(3)  # slow down guessing
+        if hmac.compare_digest(typed.strip().encode("utf-8"), str(password).encode("utf-8")):
+            st.session_state["unlocked"] = True
+            st.rerun()
+        st.session_state["tries"] = tries + 1
+        st.error("That password is not right.")
+    return False
+
+
 # ---------- drawing the page ----------
 
 def history(task):
@@ -201,6 +233,9 @@ def open_order(task):
 
 
 def main():
+    if not unlocked():
+        st.stop()
+
     store = get_store()
     if store is None:
         notice("The app is not set up yet. Add GITHUB_TOKEN and GITHUB_REPO under Manage app, Settings, Secrets on Streamlit, then Reboot app.")

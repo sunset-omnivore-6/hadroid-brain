@@ -15,7 +15,10 @@ A private to-do list that you update by talking to an AI, and read on your phone
    *"Task 3 is done. Add a task to chase the supplier about the invoice, due Friday."*
 2. Claude reads the rules, updates the file, checks it, saves it to `main`, and replies with
    exactly what changed. Expect one to three minutes; it starts a fresh session each time.
-3. Open the app and tap **Refresh**. The list matches the file.
+3. Open the app, type the password, and tap **Refresh**. The list matches the file.
+
+The app asks for the password every time it opens in a new tab. Nothing is shown, and nothing
+is read from GitHub, until the right password is typed.
 
 You can also tick a box in the app. That saves straight to the file with a note
 "Ticked done in the app", and Claude sees it next time.
@@ -45,6 +48,7 @@ Claude app on your phone with this repository connected.
    ```toml
    GITHUB_TOKEN = "paste the key here"
    GITHUB_REPO = "owner/repository-name"
+   APP_PASSWORD = "a password of your choice"
    ```
 
    Then **Deploy**. This uses your one free private app. Do not add any viewers.
@@ -69,6 +73,8 @@ called **Details for Claude**. Copy the message to Claude and it will sort it ou
   the file's history on GitHub. Tell Claude: *"The task file is broken, restore it from the
   last good version."*
 - **"GitHub was busy, nothing was changed."** Tap Refresh and tick again.
+- **"No password has been set for the app yet."** Add `APP_PASSWORD` to the app's Secrets on
+  Streamlit, then Reboot app.
 
 ## Privacy
 
@@ -82,7 +88,7 @@ app's GitHub key is stored only in Streamlit's Secrets, never in the repository.
 
 ```
 pip install -r requirements.txt
-TASKS_LOCAL_FILE=data/tasks.json streamlit run app.py
+APP_PASSWORD=test TASKS_LOCAL_FILE=data/tasks.json streamlit run app.py
 ```
 
 With `TASKS_LOCAL_FILE` set, the app reads and writes that local file instead of GitHub.
