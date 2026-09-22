@@ -138,7 +138,9 @@ em, i {{ font-style: normal; font-weight: 700; }}   /* never italics */
 [data-testid="stExpander"] summary {{ min-height: 48px; font-size: {max(px - 2, 16)}px; }}
 button[data-baseweb="tab"] {{ min-height: 52px; font-size: {max(px - 2, 16)}px; font-weight: 700; }}
 *:focus-visible {{ outline: 3px solid {ACCENT} !important; outline-offset: 2px; }}
-hr {{ margin: 1.2em 0; }}
+[data-testid="stVerticalBlockBorderWrapper"] {{ background-color: {card}; border-radius: 12px; margin-bottom: 0.6em; }}
+[data-testid="stCheckbox"] {{ margin-top: 0; }}
+h2, h3 {{ margin-top: 1.2em; }}
 #MainMenu, footer {{ visibility: hidden; }}
 </style>
 """
@@ -328,27 +330,87 @@ def history(task):
 
 
 def task_card(task, version, ticked):
-    st.checkbox(f"{task['id']} {task['title']}", value=ticked, key=f"tick_{task['id']}_{version}",
-                on_change=on_tick, args=(task["id"], not ticked))
-    if ticked:
-        st.markdown(f"**{closed_words(task)}**")
-    else:
-        due = due_words(task)
-        if due:
-            st.markdown(f"**{due}**")
-    st.write(task["summary"])
-    if not ticked and task["progress"] is not None:
-        st.caption(f"{task['progress']}% done")
-    history(task)
-    st.divider()
+    """One task in a bordered box: tick box and title, then the date and summary on one line."""
+    with st.container(border=True):
+        st.checkbox(f"{task['id']} {task['title']}", value=ticked, key=f"tick_{task['id']}_{version}",
+                    on_change=on_tick, args=(task["id"], not ticked))
+        when = closed_words(task) if ticked else due_words(task)
+        extra = f" · {task['progress']}% done" if (not ticked and task["progress"] is not None) else ""
+        lead = f"**{when}{extra}** · " if when else ""
+        st.markdown(f"{lead}{task['summary']}")
+        history(task)
 
 
 def aside_card(task):
-    st.markdown(f"**{task['id']} {task['title']}**")
-    st.markdown(f"**{closed_words(task)}**")
-    st.write(task["summary"])
-    history(task)
-    st.divider()
+    with st.container(border=True):
+        st.markdown(f"**{task['id']} {task['title']}**")
+        st.markdown(f"**{closed_words(task)}** · {task['summary']}")
+        history(task)
+
+
+def grouped(open_tasks):
+    """Splits the live list into Overdue, Today, Tomorrow, This week, Later, No date."""
+    today = datetime.now(TIMEZONE).date()
+    end_of_week = today + timedelta(days=6 - today.weekday())
+    groups = {"Overdue": [], "Today": [], "Tomorrow": [], "This week": [], "Later": [], "No date": []}
+    for t in open_tasks:
+        if not t["due"]:
+            groups["No date"].append(t)
+            continue
+        d = date.fromisoformat(t["due"])
+        if d < today:
+            groups["Overdue"].append(t)
+        elif d == today:
+            groups["Today"].append(t)
+        elif d == today + timedelta(days=1):
+            groups["Tomorrow"].append(t)
+        elif d <= end_of_week:
+            groups["This week"].append(t)
+        else:
+            groups["Later"].append(t)
+    return groups
+
+
+def calendar_view(open_tasks, weeks_ahead=4):
+    """Day by day for the coming weeks, so you can see what lines up."""
+    today = datetime.now(TIMEZONE).date()
+    monday = today - timedelta(days=today.weekday())
+    by_day = {}
+    for t in open_tasks:
+        if t["due"]:
+            by_day.setdefault(date.fromisoformat(t["due"]), []).append(t)
+    overdue = sorted([d for d in by_day if d < monday])
+    if overdue:
+        st.subheader("Overdue")
+        for d in overdue:
+            st.markdown(f"**Was due {day_words(d)}**\n" + "\n".join(f"- {t['id']} {t['title']}" for t in by_day[d]))
+    for w in range(weeks_ahead):
+        start = monday + timedelta(days=7 * w)
+        label = "This week" if w == 0 else "Next week" if w == 1 else f"Week of {day_words(start)}"
+        st.subheader(label)
+        shown = False
+        for i in range(7):
+            d = start + timedelta(days=i)
+            tasks = by_day.get(d, [])
+            if not tasks and w > 0:
+                continue
+            shown = True
+            name = "Today" if d == today else day_words(d)
+            if tasks:
+                st.markdown(f"**{name}**\n" + "\n".join(f"- {t['id']} {t['title']}" for t in tasks))
+            else:
+                st.markdown(f"<span style='color:{MUTED}'>{name} · nothing due</span>", unsafe_allow_html=True)
+        if not shown:
+            st.markdown(f"<span style='color:{MUTED}'>Nothing due</span>", unsafe_allow_html=True)
+    later = sorted([d for d in by_day if d >= monday + timedelta(days=7 * weeks_ahead)])
+    if later:
+        st.subheader("Further ahead")
+        for d in later:
+            st.markdown(f"**{day_words(d)}**\n" + "\n".join(f"- {t['id']} {t['title']}" for t in by_day[d]))
+    undated = [t for t in open_tasks if not t["due"]]
+    if undated:
+        st.subheader("No date")
+        st.markdown("\n".join(f"- {t['id']} {t['title']}" for t in undated))
 
 
 def spoken(tasks, ticked):
@@ -419,14 +481,22 @@ def main():
     done_tasks = sorted([t for t in tasks if t["status"] == "done"], key=lambda t: t["closed"], reverse=True)
     aside_tasks = sorted([t for t in tasks if t["status"] == "set aside"], key=lambda t: t["closed"], reverse=True)
 
-    tab_open, tab_done = st.tabs([f"To do · {len(open_tasks)}", f"Done · {len(done_tasks) + len(aside_tasks)}"])
+    tab_open, tab_cal, tab_done = st.tabs([f"To do · {len(open_tasks)}", "Calendar",
+                                           f"Done · {len(done_tasks) + len(aside_tasks)}"])
 
     with tab_open:
         read_aloud(spoken(open_tasks, ticked=False), key="say_open")
         if not open_tasks:
             st.info("Nothing to do. Tell Claude when something comes up.")
-        for task in open_tasks:
-            task_card(task, version, ticked=False)
+        for name, tasks_in_group in grouped(open_tasks).items():
+            if not tasks_in_group:
+                continue
+            st.subheader(f"{name} · {len(tasks_in_group)}")
+            for task in tasks_in_group:
+                task_card(task, version, ticked=False)
+
+    with tab_cal:
+        calendar_view(open_tasks)
 
     with tab_done:
         st.subheader("Done")
