@@ -2,16 +2,17 @@
 
 A private to-do list that you update by talking to an AI, and read on your phone.
 
-- **The list** is one file, `data/tasks.json`, in this private repository. It keeps every
-  task ever added, with dated notes, so nothing is lost and old work can be reviewed.
+- **The list** is one file, `data/tasks.json`, in a separate private repository,
+  `hadroid-tasks`. It keeps every task ever added, with dated notes, so nothing is lost and
+  old work can be reviewed. This repository holds only the app and can be public.
 - **The app** (Streamlit) shows the list as a tick list. You can tick a task done or untick
   it. Everything else is changed by telling Claude.
-- **The rules** an AI follows are in `AGENTS.md`. Claude Code reads them through `CLAUDE.md`.
+- **The rules** an AI follows are in the `hadroid-tasks` repository's `AGENTS.md`.
 
 ## Day to day
 
-1. Open the Claude app on your phone, go to the **Code** tab, pick this repository and the
-   `main` branch, and type what happened, for example:
+1. Open the Claude app on your phone, go to the **Code** tab, pick the `hadroid-tasks`
+   repository and the `main` branch, and type what happened, for example:
    *"Task 3 is done. Add a task to chase the supplier about the invoice, due Friday."*
 2. Claude reads the rules, updates the file, checks it, saves it to `main`, and replies with
    exactly what changed. Expect one to three minutes; it starts a fresh session each time.
@@ -51,13 +52,13 @@ phone's or computer's own voice.
 
 ## Setting it up (once)
 
-You need: this repository (private), a free Streamlit Community Cloud account, and the
-Claude app on your phone with this repository connected.
+You need: this repository, the private `hadroid-tasks` repository, a free Streamlit
+Community Cloud account, and the Claude app on your phone with `hadroid-tasks` connected.
 
 1. **GitHub key for the app.** On GitHub: your profile photo, **Settings**, **Developer
    settings**, **Personal access tokens**, **Fine-grained tokens**, **Generate new token**.
    Name: `work-tasks-app`. Expiration: **No expiration**. Repository access: **Only select
-   repositories**, choose this one. Permissions, Repository permissions, **Contents: Read and
+   repositories**, choose `hadroid-tasks` (the task repository, not this one). Permissions, Repository permissions, **Contents: Read and
    write**. Generate, then copy the key once; GitHub will not show it again.
 2. **Streamlit.** Go to share.streamlit.io and sign in with GitHub (say yes to the permission
    it asks for; it needs it to see a private repository). **Create app**, **Deploy a public
@@ -66,7 +67,7 @@ Claude app on your phone with this repository connected.
 
    ```toml
    GITHUB_TOKEN = "paste the key here"
-   GITHUB_REPO = "owner/repository-name"
+   GITHUB_REPO = "owner/hadroid-tasks"
    APP_PASSWORD = "a password of your choice"
    ```
 
@@ -77,8 +78,8 @@ Claude app on your phone with this repository connected.
    about 12 hours without a visit; the first open of the day shows a wake-up button and takes
    about a minute.
 
-Do not add any protection rules to the `main` branch. They would block both the app's ticks
-and Claude's saves.
+Do not add any protection rules to the `main` branch of `hadroid-tasks`. They would block
+both the app's ticks and Claude's saves.
 
 ## When something goes wrong
 
@@ -107,8 +108,7 @@ app's GitHub key is stored only in Streamlit's Secrets, never in the repository.
 
 ```
 pip install -r requirements.txt
-APP_PASSWORD=test TASKS_LOCAL_FILE=data/tasks.json streamlit run app.py
+APP_PASSWORD=test TASKS_LOCAL_FILE=../hadroid-tasks/data/tasks.json streamlit run app.py
 ```
 
 With `TASKS_LOCAL_FILE` set, the app reads and writes that local file instead of GitHub.
-`python3 check_tasks.py` checks the file and says what, if anything, is wrong.
